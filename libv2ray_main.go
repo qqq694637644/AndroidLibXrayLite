@@ -24,7 +24,6 @@ import (
 	corestats "github.com/xtls/xray-core/features/stats"
 	coreserial "github.com/xtls/xray-core/infra/conf/serial"
 	_ "github.com/xtls/xray-core/main/distro/all"
-	browser_dialer "github.com/xtls/xray-core/transport/internet/browser_dialer"
 	mobasset "golang.org/x/mobile/asset"
 )
 
@@ -159,34 +158,10 @@ func (x *CoreController) QueryStats(tag string, direct string) int64 {
 // Returns a single-line text in format: tag,direction,value;tag,direction,value;
 // Returns an empty string if the stats manager is not initialized or no counters exist.
 func (x *CoreController) QueryAllOutboundTrafficStats() string {
-	if x.statsManager == nil {
-		return ""
-	}
-
-	var b strings.Builder
-
-	x.statsManager.VisitCounters(func(name string, counter corestats.Counter) bool {
-		parts := strings.Split(name, ">>>")
-		if len(parts) != 4 || parts[0] != "outbound" || parts[2] != "traffic" {
-			return true
-		}
-
-		tag := parts[1]
-		direct := parts[3]
-		value := counter.Set(0)
-		if value <= 0 {
-			return true // Skip counters with non-positive values
-		}
-
-		b.WriteString(tag)
-		b.WriteByte(',')
-		b.WriteString(direct)
-		b.WriteByte(',')
-		b.WriteString(strconv.FormatInt(value, 10))
-		b.WriteByte(';')
-		return true
-	})
-	return b.String()
+	// Xray-core v1.260327.0 does not expose stats.Manager.VisitCounters.
+	// Keep the gomobile API used by v2rayNG, but report no aggregate counters
+	// for this exact 26.3.27 compatibility build.
+	return ""
 }
 
 // MeasureDelay measures network latency to a specified URL through the current core instance
@@ -239,7 +214,8 @@ func CheckVersionX() string {
 // If the dialer address is empty, it will disable the browser dialer and close existing connections
 func ReconcileBrowserDialer(dialerAddr string) {
 	setEnvVariable(browserDialerAddress, dialerAddr)
-	browser_dialer.Reload()
+	// Xray-core v1.260327.0 does not expose browser_dialer.Reload.
+	// The environment variable is still set before core startup; live reload is unavailable.
 }
 
 // doShutdown shuts down the Xray instance and cleans up resources
