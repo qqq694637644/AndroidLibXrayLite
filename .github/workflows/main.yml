@@ -6,6 +6,16 @@ on:
       release_tag:
         required: false
         type: string
+      xray_core_version:
+        description: 'github.com/xtls/xray-core module version to require; empty uses go.mod default'
+        required: false
+        default: ''
+        type: string
+      xray_core_replace:
+        description: 'Optional replacement in module@version form; empty disables replace'
+        required: false
+        default: ''
+        type: string
   pull_request:
     branches:
       - main
@@ -45,13 +55,39 @@ jobs:
           --install "ndk;29.0.14206865"
         echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> $GITHUB_ENV
 
+    - name: Resolve Xray-core dependency
+      env:
+        REQUESTED_XRAY_CORE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.xray_core_version || '' }}
+        REQUESTED_XRAY_CORE_REPLACE: ${{ github.event_name == 'workflow_dispatch' && inputs.xray_core_replace || '' }}
+      run: |
+        set -euo pipefail
+
+        go mod edit -dropreplace=github.com/xtls/xray-core || true
+
+        if [ -n "$REQUESTED_XRAY_CORE_VERSION" ]; then
+          go get "github.com/xtls/xray-core@$REQUESTED_XRAY_CORE_VERSION"
+        fi
+
+        if [ -n "$REQUESTED_XRAY_CORE_REPLACE" ]; then
+          if [[ "$REQUESTED_XRAY_CORE_REPLACE" != *@* ]]; then
+            echo "xray_core_replace must be in module@version form" >&2
+            exit 1
+          fi
+          replace_module="${REQUESTED_XRAY_CORE_REPLACE%@*}"
+          replace_version="${REQUESTED_XRAY_CORE_REPLACE##*@}"
+          go mod edit -replace="github.com/xtls/xray-core=$replace_module@$replace_version"
+        fi
+
+        go mod tidy
+        echo 'Resolved Xray-core module:'
+        go list -m -mod=mod github.com/xtls/xray-core
+
     - name: Build
       run: |
          mkdir -p assets data
          bash gen_assets.sh download
          cp -v data/*.dat assets/
          gomobile init
-         go mod tidy
          gomobile bind -v -androidapi 24 -trimpath -ldflags='-s -w -buildid= -checklinkname=0' ./
  
     - name: Upload build artifacts
