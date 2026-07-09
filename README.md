@@ -17,13 +17,13 @@
 This fork keeps the current AndroidLibXrayLite wrapper API used by v2rayNG, but does not force the upstream `autorepobot/xray-core` replacement by default. The default `go.mod` dependency is:
 
 ```text
-github.com/xtls/xray-core v1.260327.1-0.20260601021109-94ffd50060f1
+github.com/xtls/xray-core v1.260327.0
 ```
 
 Use the `Build` workflow manually to publish a custom AAR:
 
 ```text
-release_tag = v26.3.27-v2rayng
+release_tag = v26.3.27-v2rayng-r2
 xray_core_version =
 xray_core_replace =
 ```
